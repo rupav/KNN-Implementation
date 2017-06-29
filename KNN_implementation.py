@@ -35,11 +35,12 @@ cmap_bold = ListedColormap(['#FF0000', '#0000FF'])
 
 
 
-
-def euclid_cal(TestData,TestTrain):
+# for distance calculatioin between testing and traing points. I have used Euclidian distance. We could have used Manhattan Distance too
+def euclid_cal(TestData,TestTrain):  
     return ((((TestData-TestTrain)**2).sum())**0.5)
 
-def majority(top_labels,KNN):
+
+def majority(top_labels,KNN):                  #returns the predicted class for a given KNN
     count_0 = 0
     count_1 = 0
     
@@ -58,30 +59,31 @@ def majority(top_labels,KNN):
     
 def predictKNN(x_train,y_train,x_test,y_test,KNN):
     y_pred = []
-    for k in range (x_test.shape[0]):               #for every point
+    for k in range (x_test.shape[0]):               #for every testing point(whole row)
         
         distances = []
-        TestData = np.array(x_test.iloc[k,:])       # whole col.
+        TestData = np.array(x_test.iloc[k,:])       # whole row
         
-        for i in range(x_train.shape[0]): ##for every row
+        for i in range(x_train.shape[0]):           ##for every row
                 
             TrainData = np.array(x_train.iloc[i,:])
             dist  = euclid_cal(TestData,TrainData)
-            distances.append((dist, i))                
+            distances.append((dist, i))             #inserting euclidian distances between each testing and whole training data in distances list with respectine index of training point(row)  
         
-        distances.sort()
+        distances.sort()                            #after distances are appended for a given testing point, sorting is reqd, to find the top KNN(which are min.) distances 
         top_indexes =[]
         top_labels = []
         
         
             
         for m in range(KNN):
-            top_indexes.append(distances[:KNN][m][1])               
-            top_labels.append(y_train.iloc[top_indexes[m],0])
+            top_indexes.append(distances[:KNN][m][1])               #indexes for min. distances between testing point and training point
+            top_labels.append(y_train.iloc[top_indexes[m],0])       #top labels contains all that class whose corresponding training data shares the min. distance with the given testing point
             #print (top_labels[m])
             
-        y_pred.append(majority(top_labels,KNN))
-    y_pred = pd.DataFrame(y_pred)
+        y_pred.append(majority(top_labels,KNN))      
+    y_pred = pd.DataFrame(y_pred)                    # converted list into a dataframe
+    
     #print("Confusion Matrix :",confusion_matrix(y_test,y_pred))
     #print("Classification Report :\n",classification_report(y_test,y_pred))
         
@@ -101,7 +103,7 @@ def run():
     for i in range(1,16,2):                                                     #to find best K
         y_pred = predictKNN(x_train,y_train,x_test,y_test,i)
 
-        TN_TP = (((y_pred^y_test)==0).sum())     ## XOR: if 0 then correct, if 1 then wrong Prediction
+        TN_TP = (((y_pred^y_test)==0).sum())                                    ## XOR: if 0 then correct, if 1 then wrong Prediction
 
         accuracy = (TN_TP)/(y_pred.shape[0])
         print("Accuracy for k = ",i,"  is:\n",accuracy)
@@ -129,20 +131,20 @@ print(dataset.data)
 print(dataset.target.shape)
 '''
 
-df = pd.read_csv('BreastCancer.csv',header = 0)   #got the url from dataset.descr
+df = pd.read_csv('BreastCancer.csv',header = 0)                                         
 print(df.columns)
 print(df.shape)
 
-df['diagnosis'] = df['diagnosis'].map({'M':1,'B':0})
-print(df['diagnosis'])
+df['diagnosis'] = df['diagnosis'].map({'M':1,'B':0})                        #m and b will be replaced by 1 and 0
+print(df['diagnosis'])                
 
 df.drop('id',axis = 1,inplace = True)
 print(df.head())
 print(df.shape)
 outputDF = df['diagnosis']
 print(df.dtypes)             #all flotat64 except diagnosis is int64   
-print(pd.isnull(df).sum())   #not a single entry is missing
-inputDF= df.iloc[:,1:11]
+print(pd.isnull(df).sum())   #not a single entry is nan/missing
+inputDF= df.iloc[:,1:11]     #including mean values of input only
 print(inputDF.head())
 
 #data columns is not so sparse, but still scaling
@@ -157,6 +159,10 @@ def scale(inputDF):
 scale(inputDF)
 print (inputDF.head())
 
+'''
+plotting function for plotting histogram
+'''
+
 def plotting(inputDF,outputDF):
     
     dfM = inputDF[outputDF==1]   ##maligned inputDF
@@ -170,7 +176,7 @@ def plotting(inputDF,outputDF):
     axes = axes.ravel()
     #print(axes)
     
-    for index,ax in enumerate(axes):
+    for index,ax in enumerate(axes):                    #enumerate is usefuls as , axes[index] = (ax)ith
         ax.figure
         binwidth = (inputDF.iloc[:,index].max()-inputDF.iloc[:,index].min())/50
         bins = (np.arange(start=inputDF.iloc[:,index].min(),stop=inputDF.iloc[:,index].max()+binwidth,step=binwidth))
@@ -206,10 +212,15 @@ print(inputDF.head())
 #import seaborn as sns
 #cmap = sns.cubehelix_palette(n_colors=7,start=0,rot=0.5,dark=0,light=0.9,as_cmap=True)
 
+'''
+KNNplot function for plotting KNN decision boundary with training points
+'''
+
 def KNNplot(inputDF,outputDF):
     ### we need 2 columns for plotting KNN ,radius,perimeter and area are interrealted, so 1 can be chosen from them i.e. radius
-    ### taking other feature as concavity for KNN plotting
-    inputDF = inputDF.filter(items = ['radius_mean','concavity_mean'], axis = 1)
+    ### taking other feature, concavity for KNN plotting
+    
+    inputDF = inputDF.filter(items = ['radius_mean','concavity_mean'], axis = 1) #.filter takes out given rows/col. accordingly 
     print(inputDF.shape)
     
     #sns.pairplot(inputDF)
@@ -225,30 +236,31 @@ def KNNplot(inputDF,outputDF):
     
     x_min, x_max = x_train.iloc[:,0].min() , x_train.iloc[:,0].max()+1
     y_min ,y_max = x_train.iloc[:,1].min() , x_train.iloc[:,1].max()+1
-    h1 = (x_max-x_min)/10
+    h1 = (x_max-x_min)/10                                              #for 10 steps/units only
     h2 = (y_max-y_min)/10
     
-    xx , yy = np.meshgrid(np.arange(start = x_min,stop = x_max,step = h1),
+    xx , yy = np.meshgrid(np.arange(start = x_min,stop = x_max,step = h1),    #both xx and yy will be 2D array
                           np.arange(start = y_min,stop = y_max,step = h2))
+     
     
-    
-    plottingInput = pd.DataFrame(np.c_[xx.ravel(),yy.ravel()])
+    plottingInput = pd.DataFrame(np.c_[xx.ravel(),yy.ravel()])                #np.c_ will combine 2 arrays column wise
     plottingInput.columns = ['radius_mean','concavity_mean']
     print(plottingInput.shape)
     print(plottingInput.head())
     
-    plottingResult = predictKNN(x_train,y_train,plottingInput,y_test,5)
+    plottingResult = predictKNN(x_train,y_train,plottingInput,y_test,5)      #plottingInput as our testig data
+    
     print(plottingResult.shape)
     #color plot
-    Z = np.array(plottingResult)
+    Z = np.array(plottingResult)                                             #because return type of predictKNN was a DataFrame
     print(type(Z))
     print(Z.shape)
-    Z = Z.reshape(xx.shape)
+    Z = Z.reshape(xx.shape)                                                  
     print(Z.shape)
     plt.pcolormesh(xx,yy,Z,cmap = cmap_light)
     
-    #training data plot
-    plt.scatter(x_train.iloc[:,0],x_train.iloc[:,1],c=y_train,cmap = cmap_bold)
+    #training data plot/scatter
+    plt.scatter(x_train.iloc[:,0],x_train.iloc[:,1],c = y_train,cmap = cmap_bold) 
     plt.xlim(xx.min(), xx.max())   
     plt.ylim(yy.min(), yy.max())
     plt.show()
